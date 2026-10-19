@@ -1,0 +1,16 @@
+{
+  "/health/live": 200,
+  "/health/ready": 200,
+  "/dashboard/": 200,
+  "/dashboard/_dash-layout": 200,
+  "/dashboard/_dash-dependencies": 200,
+  "/dashboard/assets/local.css": 200,
+  "/r/token-general": 200,
+  "/reports": 200,
+  "/docs": 200,
+  "pdf_downloads_ok": 15,
+  "pdf_missing": 0,
+  "smtp_messages": 10,
+  "smtp_pdf_attachments": 10,
+  "original_records": 5
+}

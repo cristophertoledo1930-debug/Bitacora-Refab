@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informes | QR Lab Hub</title>
+<style>body{background:#0b1411;color:#f4f8f5;font:16px system-ui;margin:2rem}a{color:#64d6a0}article{background:#14231d;border:1px solid #2b4237;border-radius:8px;padding:1rem;margin:1rem 0}small{color:#bccec3}button,input{padding:.6rem;margin:.4rem}button{background:#64d6a0;border:0;border-radius:4px}form{margin:1rem 0}</style></head>
+<body><a href="/dashboard/">Volver al dashboard</a><h1>Informes mensuales</h1>
+<p>PDF por periodo. Los correos de este entorno se guardan solamente en el buzón local.</p>
+<form method="post" action="/reports/generate"><label>Periodo <input name="period" type="month" required max="{{ current_period }}" value="{{ current_period }}"></label><button>Generar o recuperar PDF</button></form>
+{% for report in reports %}<article><h2>{{ report.period }} · Revisión {{ report.revision }}</h2>
+{% if report.pdf_available %}<a href="/api/v1/reports/{{ report.id }}/pdf">Descargar PDF</a>{% else %}<p>Archivo anterior no disponible en esta carpeta. Genere otra revisión.</p>{% endif %}
+<p>Estado: {{ report.status }}</p>{% for delivery in report.deliveries %}<small>Entrega: {{ delivery.status }} · Intentos: {{ delivery.attempts }}</small><br>{% endfor %}</article>
+{% else %}<p>Aún no hay informes.</p>{% endfor %}</body></html>

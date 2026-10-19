@@ -1,0 +1,11 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #0b1411; }
+.lab-main { min-width: 0; }
+.extra-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; }
+input[type=date] { padding: 8px; border-radius: 4px; border: 1px solid #bccEC3; }
+a:focus-visible, input:focus-visible, button:focus-visible { outline: 3px solid #64d6a0; outline-offset: 3px; }
+@media(max-width: 760px) {
+  .lab-layout { flex-direction: column !important; }
+  #sidebar { width: 100% !important; min-width: 0 !important; padding: 1rem !important; }
+  .lab-main { padding: 1rem !important; }
+}

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Lab Hub — Registro de Residuo</title>
+  <style>
+    :root {
+      --bg: #0B1411;
+      --card-bg: #14231D;
+      --input-bg: #1B2D26;
+      --primary: #64D6A0;
+      --primary-hover: #52be8a;
+      --text: #F4F8F5;
+      --text-muted: #BCCEC3;
+      --border: #2B4237;
+      --danger: #FF6B6B;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.25rem 1rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(100, 214, 160, 0.15);
+      color: var(--primary);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-size: 1.4rem;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .alert-error {
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    label {
+      display: block;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+    }
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.75rem;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus, input:focus {
+      border-color: var(--primary);
+    }
+    .weight-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .weight-row input {
+      flex: 2;
+    }
+    .weight-row select {
+      flex: 1;
+    }
+    button.submit-btn {
+      width: 100%;
+      background: var(--primary);
+      color: #07120D;
+      border: none;
+      border-radius: 8px;
+      padding: 0.9rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button.submit-btn:hover {
+      background: var(--primary-hover);
+    }
+    button.submit-btn:active {
+      transform: scale(0.99);
+    }
+    .footer {
+      margin-top: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge">QR Lab Hub</span>
+      <h1>Registro de Residuo</h1>
+      <p class="subtitle">{{ qr_label or "Formulario de registro rápido" }}</p>
+    </div>
+
+    {% if error %}
+    <div class="alert-error" role="alert">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/r/{{ token }}">
+      <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+
+      <div class="form-group">
+        <label for="waste_type_id">Tipo de Residuo *</label>
+        <select id="waste_type_id" name="waste_type_id" required>
+          <option value="">-- Seleccionar tipo --</option>
+          {% for t in waste_types %}
+          <option value="{{ t.id }}" {% if selected_waste_type == (t.id|string) %}selected{% endif %}>
+            {{ t.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="material_id">Material *</label>
+        <select id="material_id" name="material_id" required>
+          <option value="">-- Seleccionar material --</option>
+          {% for m in materials %}
+          <option value="{{ m.id }}" {% if selected_material == (m.id|string) %}selected{% endif %}>
+            {{ m.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="machine_id">Máquina *</label>
+        <select id="machine_id" name="machine_id" required>
+          <option value="">-- Seleccionar máquina --</option>
+          {% for mach in machines %}
+          <option value="{{ mach.id }}" {% if selected_machine == (mach.id|string) %}selected{% endif %}>
+            {{ mach.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="cause_id">Causa del Descarte *</label>
+        <select id="cause_id" name="cause_id" required>
+          <option value="">-- Seleccionar causa --</option>
+          {% for c in causes %}
+          <option value="{{ c.id }}" {% if selected_cause == (c.id|string) %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="weight">Peso Medido *</label>
+        <div class="weight-row">
+          <input type="text" id="weight" name="weight" placeholder="Ej: 125 ó 0.125" value="{{ weight or '' }}" required autofocus inputmode="decimal">
+          <select id="unit" name="unit">
+            <option value="g" {% if unit == 'g' or not unit %}selected{% endif %}>Gramos (g)</option>
+            <option value="kg" {% if unit == 'kg' %}selected{% endif %}>Kilogramos (kg)</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn">Guardar Registro</button>
+    </form>
+  </div>
+
+  <div class="footer">
+    QR Lab Hub &copy; 2026 &bull; Laboratorio Universitario
+  </div>
+</body>
+</html>
+
