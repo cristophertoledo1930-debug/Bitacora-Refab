@@ -20,4 +20,3 @@ Resultado:
 - `test_health_live`: PASSED (HTTP 200 `{"status": "ok", "service": "qr-lab-hub"}`)
 - `test_health_ready`: PASSED (HTTP 200 `{"status": "ready", "database": "connected"}`)
 - Duración: 0.87s, 3 passed.
-

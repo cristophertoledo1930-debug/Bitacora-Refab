@@ -4,14 +4,13 @@ from decimal import Decimal
 from email import policy
 from email.parser import BytesParser
 import socket
-import uuid
 
 import pytest
 from aiosmtpd.controller import Controller
 from fastapi.testclient import TestClient
 from lab_hub.api.app import app
 from lab_hub.config import get_settings
-from lab_hub.db.models import ReportRun, ReportDelivery
+from lab_hub.db.models import ReportDelivery
 from lab_hub.db.session import SessionLocal
 from lab_hub.jobs.monthly_report import process_monthly_report
 from lab_hub.reports.mailer import send_report_email
@@ -33,7 +32,7 @@ def test_mounted_dashboard_and_protection():
     assert client.get("/dashboard/", headers=headers).status_code == 200
     response = client.get("/dashboard/_dash-layout", headers=headers)
     assert response.status_code == 200
-    assert response.json()["type"] == "Div"
+    assert response.json()["type"] == "Main"
     assert client.get("/reports", headers=headers).status_code == 200
     assert client.get("/r/token-general").status_code == 200
 

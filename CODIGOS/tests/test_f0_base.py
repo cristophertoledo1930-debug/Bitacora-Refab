@@ -25,4 +25,3 @@ def test_health_ready():
     data = res.json()
     assert data["status"] == "ready"
     assert data["database"] == "connected"
-

@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
@@ -151,4 +150,3 @@ class ReportDelivery(Base):
     )
 
     report_run = relationship("ReportRun", back_populates="deliveries")
-

@@ -28,4 +28,3 @@ Resultado:
 - `test_t19_admin_protection_and_public_qr`: PASSED (401 denegado sin clave, 200 con header/cookie, QR público activo)
 - `test_t20_dashboard_callback_renders_cleanly`: PASSED (renderizado de gráficos y tabla)
 - 5/5 pasadas en 1.59s.
-

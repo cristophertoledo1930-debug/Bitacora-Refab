@@ -1,0 +1,26 @@
+[
+  {
+    "width": 320,
+    "overflow": false,
+    "kpis": 4,
+    "rows": 25
+  },
+  {
+    "width": 390,
+    "overflow": false,
+    "kpis": 4,
+    "rows": 25
+  },
+  {
+    "width": 768,
+    "overflow": false,
+    "kpis": 4,
+    "rows": 25
+  },
+  {
+    "width": 1440,
+    "overflow": false,
+    "kpis": 4,
+    "rows": 25
+  }
+]

@@ -1,10 +1,7 @@
 import os
 import io
 import hashlib
-from decimal import Decimal
-from datetime import datetime, date
-from zoneinfo import ZoneInfo
-from pathlib import Path
+from datetime import datetime
 from xml.sax.saxutils import escape
 
 import matplotlib
@@ -21,7 +18,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     Image,
-    KeepTogether,
 )
 
 from lab_hub.config import get_settings
@@ -140,7 +136,9 @@ def build_monthly_pdf(
     elements = []
 
     # Title & Subtitle
-    elements.append(Paragraph("QR Lab Hub — Informe Mensual de Residuos", title_style))
+    report_label = "Semanal" if snapshot.get("report_kind") == "weekly" else "Mensual"
+    source_label = " — Formularios" if snapshot.get("report_source") == "google_forms" else ""
+    elements.append(Paragraph(f"QR Lab Hub — Informe {report_label} de Residuos{source_label}", title_style))
     gen_time = datetime.now(settings.timezone).strftime("%Y-%m-%d %H:%M:%S %Z")
     elements.append(
         Paragraph(
@@ -263,7 +261,7 @@ def build_monthly_pdf(
     elements.append(
         Paragraph(
             "<b>Nota Metodológica:</b> Este informe consolida los registros obtenidos a través del sistema QR Lab Hub "
-            "durante el periodo mensual especificado, normalizados bajo el huso horario oficial de Chile (America/Santiago). "
+            "durante el periodo especificado, normalizados bajo el huso horario oficial de Chile (America/Santiago). "
             "Las cifras representan mediciones operativas internas y no constituyen clasificaciones regulatorias ni tratamiento de residuos.",
             note_style
         )
@@ -276,4 +274,3 @@ def build_monthly_pdf(
     sha256 = hashlib.sha256(content).hexdigest()
 
     return output_path, sha256
-

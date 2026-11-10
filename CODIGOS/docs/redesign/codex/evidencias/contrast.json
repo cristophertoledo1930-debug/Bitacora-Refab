@@ -1,0 +1,17 @@
+{
+  "text/bg": 17.46,
+  "text/panel": 15.21,
+  "text/input": 13.51,
+  "muted/bg": 11.36,
+  "muted/panel": 9.9,
+  "muted/input": 8.8,
+  "danger/bg": 8.59,
+  "danger/panel": 7.49,
+  "danger/input": 6.65,
+  "warn/bg": 12.41,
+  "warn/panel": 10.82,
+  "warn/input": 9.61,
+  "primary/bg": 10.4,
+  "primary/panel": 9.06,
+  "primary/input": 8.05
+}

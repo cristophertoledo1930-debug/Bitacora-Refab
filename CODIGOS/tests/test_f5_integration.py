@@ -3,11 +3,10 @@ import uuid
 import concurrent.futures
 from decimal import Decimal
 from datetime import datetime, timezone
-import pytest
 from fastapi.testclient import TestClient
 from lab_hub.api.app import app
 from lab_hub.db.session import SessionLocal
-from lab_hub.db.models import WasteRecord, ReportRun, ReportDelivery
+from lab_hub.db.models import WasteRecord
 from lab_hub.services.seeds import seed_catalogs
 from lab_hub.jobs.monthly_report import process_monthly_report
 from tests.test_f4_reports import MockSMTPClient
@@ -136,4 +135,3 @@ def test_concurrent_idempotency_race_condition():
     count = db.query(WasteRecord).filter_by(idempotency_key=shared_key).count()
     db.close()
     assert count == 1
-

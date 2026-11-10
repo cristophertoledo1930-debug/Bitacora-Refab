@@ -3,10 +3,6 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from lab_hub.db.session import SessionLocal
 from lab_hub.db.models import (
-    WasteType,
-    Material,
-    Machine,
-    Cause,
     QRContext,
     WasteRecord,
 )
@@ -24,7 +20,7 @@ def db():
 
 def test_t01_catalogs_seeded_and_idempotent(db):
     cats1 = seed_catalogs(db)
-    assert len(cats1["waste_types"]) == 2
+    assert set(cats1["waste_types"]) == {"resin", "laser_cut", "failed_part"}
     assert len(cats1["materials"]) == 5
     assert len(cats1["machines"]) == 4
     assert len(cats1["causes"]) == 6
@@ -32,7 +28,8 @@ def test_t01_catalogs_seeded_and_idempotent(db):
 
     # Idempotent re-run
     cats2 = seed_catalogs(db)
-    assert len(cats2["waste_types"]) == 2
+    assert {code: item.id for code, item in cats2["waste_types"].items()} == {
+        code: item.id for code, item in cats1["waste_types"].items()}
 
 
 def test_t01_positive_weight_constraint(db):
@@ -111,4 +108,3 @@ def test_t01_qr_token_hash_lookup(db):
     assert qr.machine.code == "laser_cutter_1"
     assert qr.waste_type.code == "laser_cut"
     assert qr.cause.code == "cut_margin"
-

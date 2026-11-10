@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Security, Request, status
+from fastapi import HTTPException, Security, Request, status
 from fastapi.security import APIKeyHeader, APIKeyCookie
 from lab_hub.config import get_settings
 
@@ -30,4 +30,3 @@ def require_admin(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Acceso administrativo no autorizado. Requiere clave de administrador."
     )
-

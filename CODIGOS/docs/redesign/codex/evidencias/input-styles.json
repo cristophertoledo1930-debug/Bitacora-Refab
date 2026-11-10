@@ -1,0 +1,14 @@
+[
+  {
+    "placeholder": "Buscar…",
+    "color": "rgb(188, 206, 195)",
+    "background": "rgb(27, 45, 38)",
+    "html": "<input type=\"search\" class=\"dash-dropdown-search\" placeholder=\"Buscar…\" autocomplete=\"off\" value=\"\" style=\"\">"
+  },
+  {
+    "placeholder": "1",
+    "color": "rgb(188, 206, 195)",
+    "background": "rgb(27, 45, 38)",
+    "html": "<input type=\"text\" class=\"current-page\" placeholder=\"1\" value=\"\" style=\"min-width: 4ch;\">"
+  }
+]

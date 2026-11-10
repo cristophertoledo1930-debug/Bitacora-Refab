@@ -40,4 +40,3 @@ class WasteRecordResponse(BaseModel):
     cause_id: UUID
     source: str
     idempotency_key: str
-

@@ -21,7 +21,7 @@ Estado: pruebas especificadas, aún no ejecutadas. Cada ejecución debe indicar 
 | T15 | SMTP local, fallo temporal y destinatario fallido | Adjunto PDF válido; retries limitados; no duplicar entregas exitosas |
 | T16 | Dos jobs simultáneos y segunda ejecución mismo mes | Un trabajo reclamado; entregas ya exitosas no se repiten |
 | T17 | Caída tras aceptación SMTP y antes de guardar estado | Entrega incierta visible; sin reenvío ciego |
-| T18 | Equipo apagado al cambio de mes | Próximo arranque recupera periodos pendientes desde mes inicial |
+| T18 | Equipo apagado al cambio de mes | Próximo arranque archiva desde REPORT_INITIAL_MONTH y envía solo periodos habilitados desde REPORT_AUTO_SEND_FROM |
 | T19 | Acceso sin sesión al dashboard/PDF y QR sin privilegios | Consulta administrativa denegada; formulario autorizado sigue funcionando |
 | T20 | Escritorio, móvil, teclado y contraste | Sin scroll horizontal del formulario, foco visible y unidades claras |
 | T21 | Respaldo y restauración en base desechable | Registros e informes recuperables según guía |
@@ -46,3 +46,22 @@ Si existen habilidades de PDF o navegador en Antigravity, usarlas para la revisi
 Crítico: pérdida de datos, acceso no autorizado, secretos expuestos. Alto: totales incorrectos, duplicados, registro bloqueado o envíos repetidos. Medio/bajo: degradación visual o secundaria sin afectar integridad.
 
 Para cada fallo conservar pasos de reproducción, esperado/observado, causa, archivos cambiados y regresión. No cerrar F5 con críticos o altos abiertos. Limitaciones del entorno deben figurar como no verificadas, nunca como aprobadas.
+
+
+## Extensión Google Forms (G0–G6)
+
+Implementación y evidencia en [g_google_forms](evidencias/g_google_forms.md).
+`tests/test_g_google_forms.py` cubre firma y secreto, límite de cuerpo, catálogo/peso/fecha,
+idempotencia y conflictos, concurrencia, estación conocida/desconocida, Unicode,
+exactitud kg/g, agregaciones, filtro source, callbacks de vacío/error, snapshot PDF y QR.
+`node tests/google_forms_script.cjs` comprueba envío, HMAC y recuperación con dobles locales.
+`scripts/capture_ui.py` comprueba interfaz en Chromium con datos sintéticos y bases desechables.
+
+La aceptación externa exige crear/publicar el Form desde la cuenta del propietario,
+API HTTPS y un teléfono. Envío Google real y escaneo físico no están verificados.
+
+## Envío mensual M0–M8
+
+`tests/test_monthly_send.py` verifica reloj consciente de zona, horario configurable, recuperación tras apagado, activación sin historial, filtro Forms idéntico a API/dashboard, revisión tardía y migración de snapshot sin reenvío, PDF obligatorio, fallo parcial, incertidumbre y límite entre revisiones. Incluye SSL, rechazo de login sin TLS antes de conectar, redacción de secretos, avisos de correo deshabilitado, conciliación administrativa con CSRF, calendario y procesos independientes.
+
+Captura real SMTP en loopback (incluido 1025), PDF sintético y navegación Chromium en escritorio/móvil. El navegador usa TestClient contra PostgreSQL desechable, sin acceder a la instancia de uso. `tests/verify_monthly_task.ps1` simula todos los cmdlets de tareas de Windows; nunca instala una tarea real. Evidencia y límites: [envío mensual](evidencias/envio_mensual.md).

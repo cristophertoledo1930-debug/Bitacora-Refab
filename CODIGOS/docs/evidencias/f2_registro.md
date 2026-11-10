@@ -26,4 +26,3 @@ Resultado:
 - `test_t06_missing_catalog_rejection`: PASSED (422 sin fila parcial)
 - `test_t07_idempotency_retry_and_conflict`: PASSED (retry devuelve 200 sin duplicar; payload diferente devuelve 409)
 - 7/7 pasadas en 1.41s.
-

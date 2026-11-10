@@ -1,11 +1,47 @@
-<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Informes | QR Lab Hub</title>
-<style>body{background:#0b1411;color:#f4f8f5;font:16px system-ui;margin:2rem}a{color:#64d6a0}article{background:#14231d;border:1px solid #2b4237;border-radius:8px;padding:1rem;margin:1rem 0}small{color:#bccec3}button,input{padding:.6rem;margin:.4rem}button{background:#64d6a0;border:0;border-radius:4px}form{margin:1rem 0}</style></head>
-<body><a href="/dashboard/">Volver al dashboard</a><h1>Informes mensuales</h1>
-<p>PDF por periodo. Los correos de este entorno se guardan solamente en el buzón local.</p>
-<form method="post" action="/reports/generate"><label>Periodo <input name="period" type="month" required max="{{ current_period }}" value="{{ current_period }}"></label><button>Generar o recuperar PDF</button></form>
-{% for report in reports %}<article><h2>{{ report.period }} · Revisión {{ report.revision }}</h2>
-{% if report.pdf_available %}<a href="/api/v1/reports/{{ report.id }}/pdf">Descargar PDF</a>{% else %}<p>Archivo anterior no disponible en esta carpeta. Genere otra revisión.</p>{% endif %}
-<p>Estado: {{ report.status }}</p>{% for delivery in report.deliveries %}<small>Entrega: {{ delivery.status }} · Intentos: {{ delivery.attempts }}</small><br>{% endfor %}</article>
-{% else %}<p>Aún no hay informes.</p>{% endfor %}</body></html>
+{% extends "base.html" %}
+{% block title %}Informes | Re-Fab · Lab881{% endblock %}{% block width %}{% endblock %}
+{% block content %}<a href="/dashboard/">Volver al dashboard</a>
+<header><p class="brand">Re-Fab · Lab881</p><h1>Informes semanales</h1>
+<p class="report-note">Actualización automática cada 15 segundos con los mismos registros del dashboard. Semanas de lunes a domingo, hora de Chile.</p>
+<p class="help">Cada cambio guarda una nueva revisión PDF. La semana en curso es provisional. Las selecciones conjuntas conservan su peso total.</p></header>
+<section class="card"><div class="table-scroll"><table>
+<caption>Archivo semanal: revisión más reciente primero dentro de cada semana</caption>
+<thead><tr><th>Semana</th><th>Fechas</th><th>Revisión</th><th>Registros</th><th>Masa (kg)</th><th>Actualizado</th><th>Archivo</th></tr></thead>
+<tbody>{% for report in reports if report.kind == 'weekly' %}<tr>
+<th scope="row">{{ report.period }}</th><td>{{ report.start_date }} al {{ report.end_date }}</td><td>{{ report.revision }}</td>
+<td>{{ report.total_records }}</td><td>{{ report.total_weight_kg }}</td><td>{{ report.generated_at }}</td>
+<td>{% if report.pdf_available %}<a href="/api/v1/reports/{{ report.id }}/pdf">Descargar PDF</a>{% else %}Pendiente{% endif %}</td>
+</tr>{% else %}<tr><td colspan="7">Preparando informes semanales. Los registros permanecen guardados.</td></tr>{% endfor %}</tbody>
+</table></div></section>
+<h2>Informes mensuales</h2>
+<section class="card" aria-label="Envío mensual">
+<h3>Correo mensual de Formularios</h3>
+{% if monthly_delivery is defined %}
+{% if not monthly_delivery.email_enabled %}<p role="alert">Correo externo deshabilitado (EMAIL_ENABLED=false).</p>{% endif %}
+{% if not monthly_delivery.auto_send_from %}<p role="alert">Envío automático sin activar: falta REPORT_AUTO_SEND_FROM.</p>{% endif %}
+<p>Próxima comprobación programada: {{ monthly_delivery.next_scheduled_at }} (hora de Chile).</p>
+<p>El mes sin respuestas también se envía. Los datos tardíos actualizan el PDF sin repetir correos enviados.</p>
+{% for period in monthly_delivery.periods %}
+<p><strong>{{ period.period }}</strong>: {{ period.status }}</p>
+{% for delivery in period.deliveries %}
+<p>{{ delivery.recipient }}: {{ delivery.status }} · {{ delivery.attempts }} intentos{% if delivery.error %} · {{ delivery.error }}{% endif %}</p>
+{% if delivery.status in ['uncertain', 'failed'] %}
+<form method="post" action="/reports/deliveries/{{ delivery.id }}/confirm">
+<input type="hidden" name="csrf" value="{{ delivery.csrf }}"><button type="submit">Confirmar enviado</button></form>
+<form method="post" action="/reports/deliveries/{{ delivery.id }}/resend">
+<input type="hidden" name="csrf" value="{{ delivery.csrf }}"><button type="submit">Reenviar correo</button></form>
+{% endif %}{% endfor %}{% else %}<p>Sin entregas mensuales registradas.</p>{% endfor %}
+{% else %}<p role="status">Estado del correo temporalmente no disponible. Los informes PDF siguen disponibles.</p>{% endif %}
+</section>
+<p class="report-note">También se actualizan automáticamente cada 15 segundos. El mes en curso es provisional; cada cambio conserva una nueva revisión.</p>
+<section class="card"><form data-submit-state method="post" action="/reports/generate" class="report-controls">
+<div><label for="period">Periodo del informe</label><input id="period" name="period" type="month" required max="{{ current_period }}" value="{{ current_period }}"></div>
+<button type="submit"><span class="spinner" aria-hidden="true"></span><span class="button-text">Generar o recuperar PDF</span></button></form>
+{% set states = {'completed':'Completado','draft':'Borrador','failed':'Fallido','pending':'Pendiente','sending':'En proceso','sent':'Enviado','uncertain':'Por conciliar'} %}
+<div class="table-scroll"><table><caption class="help">Informes por periodo y revisión; la revisión más reciente aparece primero</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Revisión</th><th scope="col">Registros</th><th scope="col">Masa (kg)</th><th scope="col">Estado</th><th scope="col">Entrega</th><th scope="col">Archivo</th></tr></thead>
+<tbody>{% for report in reports if report.kind != 'weekly' %}<tr><th data-label="Periodo" scope="row">{{ report.period }}</th><td data-label="Revisión">{{ report.revision }}</td>
+<td data-label="Registros">{{ report.total_records }}</td><td data-label="Masa (kg)">{{ report.total_weight_kg }}</td>
+<td data-label="Estado"><span class="status">{{ states.get(report.status, report.status) }}</span></td>
+<td data-label="Entrega">{% for delivery in report.deliveries %}{{ states.get(delivery.status, delivery.status) }} · {{ delivery.attempts }} intentos<br>{% else %}Sin entregas{% endfor %}</td>
+<td data-label="Archivo">{% if report.pdf_available %}<a href="/api/v1/reports/{{ report.id }}/pdf" aria-label="Descargar PDF de {{ report.period }}, revisión {{ report.revision }}">Descargar PDF</a>{% else %}Archivo no disponible{% endif %}</td></tr>
+{% else %}<tr><td colspan="7">Preparando informes mensuales automáticamente.</td></tr>{% endfor %}</tbody></table></div></section>{% endblock %}

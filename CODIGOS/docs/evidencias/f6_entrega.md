@@ -23,4 +23,3 @@ Resultado:
 - Registros restaurados verificados: 5 filas coincidentes.
 - Base temporal eliminada limpiamente.
 - Suite completa automatizada: 27/27 pruebas pasadas en pytest.
-

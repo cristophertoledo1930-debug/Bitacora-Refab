@@ -1,10 +1,8 @@
 import uuid
-from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 from lab_hub.api.app import app
 from lab_hub.db.session import SessionLocal
-from lab_hub.db.models import WasteRecord
 from lab_hub.services.seeds import seed_catalogs
 
 client = TestClient(app)
@@ -179,4 +177,3 @@ def test_t07_idempotency_retry_and_conflict():
     payload_diff = dict(payload1, weight="300.0")
     res3 = client.post("/api/v1/records", headers={"Idempotency-Key": same_key}, json=payload_diff)
     assert res3.status_code == 409
-

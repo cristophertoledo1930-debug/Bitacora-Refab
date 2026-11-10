@@ -17,11 +17,23 @@ if ($Port -gt 8090) { throw 'No hay puerto libre entre el solicitado y 8090.' }
 $baseUrl = "http://127.0.0.1:$Port"
 $env:APP_BASE_URL = "http://localhost:$Port"
 $Port | Set-Content storage/local.port
-& $python -m pip check
+if (Get-Command uv -ErrorAction SilentlyContinue) {
+    & uv pip check --python $python
+} else {
+    & $python -m pip check
+}
 if ($LASTEXITCODE -ne 0) { throw 'Revise las dependencias de .venv.' }
-& ./.tools/pgsql/bin/pg_ctl.exe -D pgdata status | Out-Null
+$pgBin = Join-Path $PSScriptRoot '.tools\pgsql\bin'
+if (-not (Test-Path (Join-Path $pgBin 'pg_ctl.exe'))) {
+    $pgBin = Join-Path $env:ProgramFiles 'PostgreSQL\16\bin'
+}
+$pgCtl = Join-Path $pgBin 'pg_ctl.exe'
+if (-not (Test-Path $pgCtl)) { throw 'No se encuentra PostgreSQL 16 local.' }
+$databasePort = & $python -c 'from sqlalchemy.engine import make_url; from lab_hub.config import get_settings; print(make_url(get_settings().DATABASE_URL).port or 5432)'
+if ($LASTEXITCODE -ne 0) { throw 'No se pudo leer la configuracion de PostgreSQL.' }
+& $pgCtl -D pgdata status | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    & ./.tools/pgsql/bin/pg_ctl.exe -D pgdata -l storage/logs/postgres.log -o '-h 127.0.0.1' -w start
+    & $pgCtl -D pgdata -l storage/logs/postgres.log -o "-h 127.0.0.1 -p $databasePort" -w start
     if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL no pudo iniciar.' }
 }
 & $python -m alembic upgrade head

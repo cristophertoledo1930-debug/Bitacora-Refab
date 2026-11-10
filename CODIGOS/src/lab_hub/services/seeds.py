@@ -14,6 +14,7 @@ def seed_catalogs(db: Session) -> dict[str, dict]:
     """
     waste_types_data = [
         {"code": "resin", "name": "Resina"},
+        {"code": "failed_part", "name": "Pieza fallida"},
         {"code": "laser_cut", "name": "Retazo láser"},
     ]
     materials_data = [
@@ -124,4 +125,3 @@ def seed_catalogs(db: Session) -> dict[str, dict]:
 
     db.commit()
     return catalogs
-

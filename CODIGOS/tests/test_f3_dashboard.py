@@ -1,15 +1,16 @@
-import uuid
 from decimal import Decimal
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 from lab_hub.api.app import app
 from lab_hub.db.session import SessionLocal
-from lab_hub.db.models import WasteRecord, WasteType, Material, Machine, Cause
+from lab_hub.db.models import WasteRecord
 from lab_hub.services.seeds import seed_catalogs
 from lab_hub.services.aggregations import get_aggregations, get_month_utc_range
-from lab_hub.dashboard.app import update_dashboard
+from lab_hub.dashboard.callbacks import refresh_data, render_records
+from lab_hub.dashboard.components import ranking_chart, monthly_chart
+from lab_hub.dashboard.data import fmt_mass
 
 client = TestClient(app)
 ADMIN_KEY = "labhub-dev-admin-key-2026"
@@ -162,14 +163,17 @@ def test_t19_admin_protection_and_public_qr():
 
 def test_t20_dashboard_callback_renders_cleanly(clean_control_fixture):
     # Call Dash callback directly to verify it returns figure objects and table data
-    results = update_dashboard(0, "kg", "ALL", "ALL", "ALL", "ALL")
-    tot_rec, tot_mass, m_rec, top_cat, fig_type, fig_cause, fig_monthly, table_data, last_upd = results
-
-    assert "3" in tot_rec
-    assert "1.500 kg" in tot_mass
+    results = refresh_data(0, "all", None, None, "ALL", "ALL", "ALL", "ALL", "ALL", None)
+    snapshot = results[0]
+    agg = snapshot["agg"]
+    fig_type = ranking_chart(agg["by_waste_type"], "Por tipo")
+    fig_cause = ranking_chart(agg["by_cause"], "Por causa")
+    fig_monthly = monthly_chart(agg["monthly_series"])
+    table_data = render_records(snapshot, 0, None)[0]
+    assert agg["total_records"] == 3
+    assert fmt_mass(agg["total_weight_g"]) == "1,50 kg"
     assert len(fig_type.data) == 1
     assert len(fig_cause.data) == 1
     assert len(fig_monthly.data) == 1
     assert len(table_data) == 3
-    assert "Última actualización" in last_upd
-
+    assert snapshot["updated"]

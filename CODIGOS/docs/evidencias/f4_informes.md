@@ -34,4 +34,3 @@ Resultado:
 - `test_t17_uncertain_state_on_smtp_drop`: PASSED (estado `uncertain` visible ante corte)
 - `test_t18_daily_recovery_processes_closed_months`: PASSED (recuperación de periodos pendientes)
 - 6/6 pasadas en 4.86s.
-

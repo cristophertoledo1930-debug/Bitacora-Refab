@@ -1,3 +1,7 @@
+from starlette.middleware.wsgi import WSGIMiddleware
+from lab_hub.dashboard.app import app as dash_app
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Depends, status, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import OperationalError
@@ -7,12 +11,13 @@ from sqlalchemy.orm import Session
 from lab_hub.config import get_settings
 from lab_hub.db.session import get_db
 from lab_hub.api.routes import router
+from lab_hub.api.integrations import router as integrations_router
 
 settings = get_settings()
 
 app = FastAPI(
     title="QR Lab Hub API",
-    description="API de registro de residuos de laboratorio y reportería",
+    description="API de registro de residuos de laboratorio y reporterÃ­a",
     version="0.1.0"
 )
 
@@ -60,15 +65,15 @@ def health_ready(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ready", "database": "connected"}
-    except Exception as exc:
+    except Exception:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "unavailable", "database": "disconnected"}
         )
 
 
-from starlette.middleware.wsgi import WSGIMiddleware
-from lab_hub.dashboard.app import app as dash_app
 
+app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent.parent / "static"), name="static")
 app.include_router(router)
+app.include_router(integrations_router)
 app.mount("/dashboard", WSGIMiddleware(dash_app.server))

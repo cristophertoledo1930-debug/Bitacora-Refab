@@ -1,0 +1,21 @@
+# Local configuration, credentials and personal workspaces
+.env
+.env.*
+!.env.example
+*credentials*.json
+*credenciales*.json
+*service-account*.json
+*secrets*.json
+token*.json
+*.pem
+*.key
+*.code-workspace
+.envrc
+.codegraph/
+.obsidian/
+.idea/
+.venv/
+.tools/
+storage/
+CODIGOS/docs/evidencias/monthly_send/
+CODIGOS/docs/evidencias/google_forms_ui/

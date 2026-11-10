@@ -1,8 +1,14 @@
+from sqlalchemy import and_
+from lab_hub.api.auth import require_admin
+from lab_hub.services.aggregations import get_aggregations
+from fastapi.responses import FileResponse
+from lab_hub.db.models import ReportRun
 import uuid
 from datetime import datetime, time, date
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 from pathlib import Path
+from typing import Literal
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Header, Form, Request, HTTPException, status, Query
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -60,7 +66,7 @@ def get_qr_form(request: Request, token: str, db: Session = Depends(get_db)):
             "weight": "",
             "unit": "g",
             "idempotency_key": str(uuid.uuid4()),
-            "error": None
+            "error": None, "error_field": None
         }
     )
 
@@ -134,7 +140,7 @@ def post_qr_form(
                 "weight": weight,
                 "unit": unit,
                 "idempotency_key": idempotency_key,
-                "error": str(exc)
+                "error": str(exc), "error_field": getattr(exc, "field", None)
             },
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
         )
@@ -166,6 +172,9 @@ def post_record(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Falta la cabecera requerida 'Idempotency-Key'."
         )
+
+    if payload.source not in {"manual", "esp32"} or idempotency_key.startswith("gform:"):
+        raise HTTPException(status_code=422, detail="Origen o clave reservados para integración firmada.")
 
     try:
         record, was_created = create_waste_record(
@@ -207,10 +216,6 @@ def post_record(
         )
 
 
-from datetime import date
-from sqlalchemy import and_
-from lab_hub.api.auth import require_admin
-from lab_hub.services.aggregations import get_aggregations
 
 
 @router.get("/api/v1/stats")
@@ -221,6 +226,7 @@ def get_stats(
     material_id: uuid.UUID | None = None,
     machine_id: uuid.UUID | None = None,
     cause_id: uuid.UUID | None = None,
+    source: Literal["manual", "google_forms", "esp32"] | None = None,
     db: Session = Depends(get_db),
     _admin: bool = Depends(require_admin)
 ):
@@ -234,7 +240,7 @@ def get_stats(
         waste_type_id=waste_type_id,
         material_id=material_id,
         machine_id=machine_id,
-        cause_id=cause_id
+        cause_id=cause_id, source=source
     )
 
 
@@ -246,6 +252,7 @@ def list_records(
     material_id: uuid.UUID | None = None,
     machine_id: uuid.UUID | None = None,
     cause_id: uuid.UUID | None = None,
+    source: Literal["manual", "google_forms", "esp32"] | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
     db: Session = Depends(get_db),
@@ -269,6 +276,9 @@ def list_records(
         filters.append(WasteRecord.machine_id == machine_id)
     if cause_id:
         filters.append(WasteRecord.cause_id == cause_id)
+
+    if source:
+        filters.append(WasteRecord.source == source)
 
     query = db.query(WasteRecord)
     if filters:
@@ -303,16 +313,16 @@ def list_records(
     }
 
 
-from fastapi.responses import FileResponse
-from lab_hub.db.models import ReportRun, ReportDelivery
 
 
 @router.get("/reports", response_class=HTMLResponse)
 def reports_page(request: Request, db: Session = Depends(get_db), _admin: bool = Depends(require_admin)):
+    from lab_hub.services.report_status import monthly_delivery_status
     return templates.TemplateResponse(request=request, name="reports.html", context={
         "reports": list_reports(db, True),
+        "monthly_delivery": monthly_delivery_status(db),
         "current_period": datetime.now(settings.timezone).strftime("%Y-%m"),
-    })
+    }, headers={"Refresh": "15"})
 
 
 @router.post("/reports/generate")
@@ -328,7 +338,47 @@ def generate_report(request: Request, period: str = Form(...), db: Session = Dep
             raise ValueError()
     except ValueError:
         raise HTTPException(status_code=422, detail="Periodo inválido.")
-    process_monthly_report(db, period)
+    process_monthly_report(db, period, send_email=False)
+    return RedirectResponse("/reports", status_code=303)
+
+
+@router.get("/api/v1/reports/monthly-status")
+def monthly_status(db: Session = Depends(get_db), _admin: bool = Depends(require_admin)):
+    from lab_hub.services.report_status import monthly_delivery_status
+    return monthly_delivery_status(db)
+
+
+@router.post("/reports/deliveries/{delivery_id}/{action}")
+def reconcile_delivery(request: Request, delivery_id: uuid.UUID, action: Literal["confirm", "resend"],
+                       csrf: str = Form(...), db: Session = Depends(get_db),
+                       _admin: bool = Depends(require_admin)):
+    from lab_hub.db.models import ReportDelivery
+    from lab_hub.services.report_status import valid_csrf
+    from lab_hub.services.locks import report_lock
+    from lab_hub.reports.mailer import send_report_email
+    from fastapi.responses import RedirectResponse
+    origin = request.headers.get("origin")
+    if (origin and origin != str(request.base_url).rstrip("/")) or not valid_csrf(delivery_id, csrf):
+        raise HTTPException(status_code=403, detail="CSRF inválido.")
+    delivery = db.get(ReportDelivery, delivery_id)
+    if delivery is None:
+        raise HTTPException(status_code=404, detail="Entrega no encontrada.")
+    run = db.get(ReportRun, delivery.report_run_id)
+    with report_lock(db, f"report:{run.period}"):
+        db.refresh(delivery)
+        if delivery.status not in {"uncertain", "failed"}:
+            raise HTTPException(status_code=409, detail="La entrega ya fue conciliada o está en proceso.")
+        if action == "confirm":
+            delivery.status = "sent"
+            delivery.error_summary = None
+            delivery.next_attempt_at = None
+            db.commit()
+        else:
+            delivery.status = "pending"
+            delivery.attempts = 0
+            delivery.next_attempt_at = None
+            db.commit()
+            send_report_email(db, run, delivery.recipient)
     return RedirectResponse("/reports", status_code=303)
 
 
@@ -352,6 +402,11 @@ def list_reports(db: Session = Depends(get_db), _admin: bool = Depends(require_a
             "id": str(r.id),
             "period": r.period,
             "revision": r.revision,
+            "kind": r.snapshot.get("report_kind", "monthly"),
+            "start_date": r.snapshot.get("start_date", ""),
+            "end_date": r.snapshot.get("end_date", ""),
+            "total_records": r.snapshot.get("total_records", 0),
+            "total_weight_kg": r.snapshot.get("total_weight_kg", "0.000"),
             "status": r.status,
             "generated_at": r.generated_at.isoformat(),
             "pdf_available": bool(r.pdf_path and Path(r.pdf_path).exists()),

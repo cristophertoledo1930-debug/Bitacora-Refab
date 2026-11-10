@@ -5,7 +5,6 @@ from uuid import UUID
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
 from lab_hub.db.models import (
     WasteRecord,
     WasteType,
@@ -54,6 +53,8 @@ def normalize_weight(weight_str: str, unit: str) -> Decimal:
         raise ValidationError("El peso debe ser mayor a cero.", "weight")
 
     if unit_clean == "kg":
+        if val > Decimal("1000"):
+            raise ValidationError("El peso excede el límite operativo máximo (1,000 kg).", "weight")
         grams = val * Decimal("1000")
     else:
         grams = val
@@ -112,15 +113,31 @@ def create_waste_record(
     cause_id: str | UUID,
     weight_str: str,
     unit: str = "g",
-    source: str = "manual"
+    source: str = "manual",
+    qr_context_id: UUID | None = None,
+    integration_payload_hash: str | None = None,
+    recorded_at: datetime | None = None,
 ) -> tuple[WasteRecord, bool]:
     """
     Creates a waste record with idempotency and transaction safety.
     Returns (record, was_created: bool).
     """
+    if recorded_at is not None and recorded_at.utcoffset() is None:
+        raise ValidationError("La fecha debe incluir zona horaria.", "recorded_at")
     if not idempotency_key or not idempotency_key.strip():
         raise ValidationError("La cabecera 'Idempotency-Key' es obligatoria.", "idempotency_key")
     key = idempotency_key.strip()
+    if len(key) > 100 or (key.startswith("gform:") and source != "google_forms"):
+        raise ValidationError("Clave idempotente inválida o reservada.", "idempotency_key")
+    if source not in {"manual", "esp32", "google_forms"}:
+        raise ValidationError("Origen inválido.", "source")
+    # Integration retries must work even after a catalog or station is deactivated.
+    if integration_payload_hash:
+        existing = db.query(WasteRecord).filter(WasteRecord.idempotency_key == key).first()
+        if existing:
+            if existing.payload_hash != integration_payload_hash:
+                raise ConflictError("Idempotency-Key ya utilizada con un payload diferente.")
+            return existing, False
 
     # Normalize weight
     weight_g = normalize_weight(weight_str, unit)
@@ -152,6 +169,7 @@ def create_waste_record(
     payload_hash = compute_payload_hash(
         str(wt.id), str(mat.id), str(mach.id), str(c.id), weight_g, source
     )
+    payload_hash = integration_payload_hash or payload_hash
 
     # Check for existing idempotency key
     existing = db.query(WasteRecord).filter(WasteRecord.idempotency_key == key).first()
@@ -168,11 +186,11 @@ def create_waste_record(
         machine_id=mach.id,
         cause_id=c.id,
         weight_g=weight_g,
-        qr_context_id=qr_ctx.id if qr_ctx else None,
+        qr_context_id=qr_ctx.id if qr_ctx else qr_context_id,
         source=source,
         idempotency_key=key,
         payload_hash=payload_hash,
-        recorded_at=datetime.now(timezone.utc)
+        recorded_at=recorded_at or datetime.now(timezone.utc)
     )
 
     db.add(new_record)
@@ -190,4 +208,3 @@ def create_waste_record(
             else:
                 raise ConflictError("Idempotency-Key ya utilizada con un payload diferente.")
         raise
-

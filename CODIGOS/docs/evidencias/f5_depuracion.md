@@ -29,4 +29,3 @@ Resultado:
 - `tests/test_f4_reports.py`: 6/6 PASSED
 - `tests/test_f5_integration.py`: 2/2 PASSED
 - **Total:** 27 passed en 4.31s. Defectos críticos o altos abiertos: 0.
-

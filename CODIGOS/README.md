@@ -1,5 +1,15 @@
 # QR Lab Hub — Sistema de Registro y Reportería de Residuos
 
+## Importación local de Google Sheets
+
+Los datos ya importados también se archivan automáticamente en [informes semanales](http://localhost:8071/reports). Cada semana abarca lunes a domingo en hora de Chile. El supervisor revisa cambios cada 15 segundos, genera una nueva revisión PDF cuando cambian los datos y conserva el historial. La página se refresca sola; la semana en curso es provisional. No se envía correo semanal. Funciona mientras el lanzador local permanezca activo.
+
+Configurar `GOOGLE_SHEETS_ID`, `GOOGLE_SHEETS_TAB` y `GOOGLE_SHEETS_CREDENTIALS` en `.env`. Colocar la clave privada local en `credenciales.json` (excluido de Git). Habilitar Google Sheets API y compartir la hoja como Lector con la cuenta de servicio.
+
+El lanzador local consulta Sheets cada 60 segundos e importa filas válidas a PostgreSQL; el dashboard actualiza cada 15 segundos. No requiere URL pública. No guarda nombre ni correo. Selecciones múltiples se muestran como categorías conjuntas: se conserva un registro y su peso total g/kg, sin repartirlo entre componentes. No reordenar ni borrar filas importadas. No combinar con entrega directa Apps Script del mismo formulario.
+
+El dashboard muestra sincronización pendiente si hay errores. Detalles operativos en [plan vigente](plan.md) y [evidencia](docs/evidencias/sheets_local.md). Ejecución manual: `.venv/Scripts/python.exe -m lab_hub.services.sheets`.
+
 Sistema Python para registro de residuos de laboratorio universitario mediante formulario abierto desde código QR, persistencia en PostgreSQL, dashboard estadístico en Dash (tema oscuro verde) e informe mensual en PDF despachado por correo.
 
 ---
@@ -164,3 +174,60 @@ Para ejecutar la suite completa de 37 pruebas automatizadas:
 3. **Balanza ESP32 (Fase F7 opcional):** Protocolo de comunicación, autenticación de dispositivo y calibración de hardware.
 4. **Política de Acceso y Red:** Integración con Single Sign-On (SSO) o autenticación universitaria para administradores y despliegue bajo HTTPS.
 
+
+
+## Google Forms, QR y nueva UI
+
+Integración local implementada siguiendo [PLAN_GOOGLE_FORMS_UIUX](PLAN_GOOGLE_FORMS_UIUX.md).
+Configuración de cuenta, preguntas, triggers y QR: [guía Google Forms](integrations/google_forms/README.md).
+La API usa GOOGLE_FORMS_SECRET y GOOGLE_FORM_URL (ver .env.example); sin secreto devuelve 503.
+No se ha creado ni publicado un formulario en una cuenta externa.
+
+Pruebas y límites: [evidencia G0–G6](docs/evidencias/g_google_forms.md).
+Diseño, accesibilidad y capturas antes/después: [auditoría UI/UX](docs/UIUX_AUDITORIA.md).
+
+La suite requiere PostgreSQL y crea una base desechable desde TEST_DATABASE_URL.
+Ejemplo PowerShell, usando una instancia de pruebas propia:
+
+```powershell
+$env:TEST_DATABASE_URL='postgresql+psycopg://postgres@127.0.0.1:55432/postgres'
+.venv/Scripts/python.exe -m pytest -q --basetemp .tools/pytest-local
+.venv/Scripts/python.exe -m ruff check src tests scripts
+node tests/google_forms_script.cjs
+uv pip check --python .venv/Scripts/python.exe
+```
+
+Para repetir revisión visual instale Chromium con `.venv/Scripts/python.exe -m playwright install chromium`;
+ejecute después `scripts/capture_ui.py after`. El script usa loopback y bases temporales sintéticas.
+Forms necesita HTTPS público para enviar a la API; activación y escaneo real siguen pendientes.
+# Envío mensual automático
+
+Copie `.env.example` a `.env` si aún no tiene configuración. Conserve su archivo privado existente y edite solo las claves necesarias. No guarde contraseñas en Git ni en evidencia.
+
+El archivo mensual usa `REPORT_SOURCE=google_forms`: coincide con el dashboard filtrado por Google Forms. PDF y correo indican Formularios. Un mes vacío también produce correo. Cambios tardíos crean otra revisión en `/reports`; los destinatarios enviados no reciben otro correo automático. Los snapshots antiguos generan una revisión al incorporar el origen y la comparación mensual, sin repetir entregas exitosas.
+
+Configure `REPORT_SEND_DAY=1` (1–28), `REPORT_SEND_HOUR=8` (0–23, America/Santiago). `REPORT_AUTO_SEND_FROM` debe indicar el primer **periodo cerrado** enviable, en formato YYYY-MM; vacío impide todo envío automático. `REPORT_INITIAL_MONTH` solo define el inicio del archivo. Al activar un periodo anterior, todos los periodos elegibles pendientes pueden recuperarse: elija deliberadamente el primer mes. Cada periodo queda habilitado en su día/hora del mes siguiente. Un arranque posterior recupera los pendientes.
+
+Para SMTP institucional solicite host, puerto y política de autenticación al administrador. Use STARTTLS con `SMTP_TLS=true` (habitualmente 587), o `SMTP_SSL=true` con `SMTP_TLS=false` (habitualmente 465). No active ambos. Defina `SMTP_USERNAME`, `SMTP_PASSWORD`, `REPORT_FROM` y `REPORT_TO` separados por comas. Si el proveedor exige contraseña de aplicación, créela en la cuenta autorizada siguiendo sus instrucciones; no use una contraseña de sesión cuando el proveedor la prohíba. Login sin cifrado se rechaza, salvo SMTP local explícito en loopback. Desactive `LOCAL_SMTP_ENABLED` para SMTP institucional.
+
+Mantenga `EMAIL_ENABLED=false` hasta que el propietario apruebe credenciales y destinatarios. Para prueba local use `SMTP_HOST=127.0.0.1`, `SMTP_PORT=1025`, `SMTP_TLS=false`, `SMTP_SSL=false`, `LOCAL_SMTP_ENABLED=true`, sin usuario/contraseña. El supervisor captura estos mensajes en `storage/mail`; una tarea independiente requiere un receptor SMTP local ya iniciado para esa prueba. Nunca use destinatarios reales durante pruebas.
+
+`/reports` y dashboard muestran estado por periodo, próxima comprobación y aviso de correo deshabilitado. Los errores se reintentan hasta tres veces, con espera. `uncertain` nunca se reenvía automáticamente: concilie el Message-ID con el proveedor y use **Confirmar enviado** o **Reenviar correo** desde `/reports`, con acceso administrativo y CSRF. La generación manual de PDF no envía correo.
+
+Una pasada manual desde `CODIGOS/`:
+
+```powershell
+.\.venv\Scripts\python.exe -m lab_hub.jobs.monthly_report
+```
+
+El comando devuelve 1 ante error o entregas fallidas/inciertas. Configuración sin activación registra el motivo y archiva sin correo. Logs de ejecución no contienen destinatarios ni secretos.
+
+Para funcionar sin abrir el lanzador, el propietario instala la tarea desde PowerShell con los permisos que Windows solicite:
+
+```powershell
+.\scripts\instalar_tarea_mensual.ps1
+# Para retirarla:
+.\scripts\desinstalar_tarea_mensual.ps1
+```
+
+La tarea diaria usa la hora configurada al instalarla; reinstálela si cambia esa hora. El job relee `.env` y aplica día/hora en cada pasada. `StartWhenAvailable` recupera ejecuciones omitidas. Usa la identidad Windows actual mediante S4U, sin guardar su contraseña; accede a recursos locales. El runner inicia el PostgreSQL local existente si falta, no crea bases ni ejecuta migraciones. Logs de la última pasada: `storage/logs/monthly.log` y `storage/logs/monthly-error.log` (incluye el resumen estructurado). El bloqueo PostgreSQL evita carreras con el supervisor. Con equipo apagado no hay envío hasta el siguiente encendido; puntualidad garantizada requiere servidor. La instalación de la tarea y recepción institucional no están verificadas durante desarrollo.

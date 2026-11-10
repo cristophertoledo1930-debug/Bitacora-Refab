@@ -23,4 +23,3 @@ Resultado:
 - `test_t01_exact_decimal_weight_storage`: PASSED (Decimal exacto 125.456)
 - `test_t01_qr_token_hash_lookup`: PASSED (Resolución contextual por SHA-256)
 - 4/4 pasadas en 0.71s.
-

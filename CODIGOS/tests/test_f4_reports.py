@@ -1,10 +1,8 @@
 import os
-import uuid
-from decimal import Decimal
-from datetime import date, datetime, timezone
+from datetime import date
 import pytest
 from lab_hub.db.session import SessionLocal
-from lab_hub.db.models import ReportRun, ReportDelivery, WasteRecord
+from lab_hub.db.models import ReportRun, ReportDelivery
 from lab_hub.services.seeds import seed_catalogs
 from lab_hub.services.aggregations import get_aggregations
 from lab_hub.reports.generator import build_monthly_pdf
@@ -147,9 +145,8 @@ def test_t18_daily_recovery_processes_closed_months(db):
     assert closed == ["2026-01", "2026-02"]
 
     mock_smtp = MockSMTPClient()
-    runs = run_daily_check(db, reference_date=date(2026, 3, 5), smtp_client=mock_smtp)
+    run_daily_check(db, reference_date=date(2026, 3, 5), smtp_client=mock_smtp)
     # 2026-02 will be generated and processed
     run_feb = db.query(ReportRun).filter_by(period="2026-02").first()
     assert run_feb is not None
     assert run_feb.status == "completed"
-

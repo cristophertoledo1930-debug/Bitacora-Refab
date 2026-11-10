@@ -20,11 +20,18 @@ os.environ["REPORT_OUTPUT_DIR"] = str(Path("storage/test-reports") / database_na
 os.environ["LOCAL_DESKTOP_ACCESS"] = "false"
 os.environ["LOCAL_SMTP_ENABLED"] = "false"
 os.environ["EMAIL_ENABLED"] = "false"
+os.environ["REPORT_INITIAL_MONTH"] = "2026-01"
+os.environ["REPORT_AUTO_SEND_FROM"] = ""
+os.environ["REPORT_SOURCE"] = "google_forms"
+os.environ["SMTP_USERNAME"] = ""
+os.environ["SMTP_PASSWORD"] = ""
+os.environ["SMTP_TLS"] = "false"
+os.environ["SMTP_SSL"] = "false"
 os.environ["ADMIN_API_KEY"] = "labhub-dev-admin-key-2026"
 get_settings.cache_clear()
 command.upgrade(Config("alembic.ini"), "head")
-from lab_hub.db.session import SessionLocal, engine
-from lab_hub.services.seeds import seed_catalogs
+from lab_hub.db.session import SessionLocal, engine  # noqa: E402 — engine must use the disposable database
+from lab_hub.services.seeds import seed_catalogs  # noqa: E402 — after isolated configuration
 with SessionLocal() as db:
     seed_catalogs(db)
 

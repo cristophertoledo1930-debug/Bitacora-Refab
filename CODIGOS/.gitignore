@@ -34,6 +34,8 @@ pgdata/
 # Environment variables & secrets
 .env
 !.env.example
+credenciales.json
+.streamlit/secrets.toml
 
 # Pytest / Coverage
 .pytest_cache/
@@ -48,4 +50,5 @@ storage/test-reports/
 storage/local.pid
 storage/local.port
 storage/local.stop
-
+storage/sheets-status.json
+storage/sheets-status.tmp
